@@ -1,12 +1,16 @@
+declare const tag: unique symbol;
+
 export interface Service<T extends string | symbol, K> {
   0: K;
   1: K extends undefined ? { [k in T]?: K } : { [k in T]: K };
+  readonly [tag]: null;
 }
 
 export interface Compute<T extends Dependency[], R> {
   (args: InferDependenciesRecord<T>): R;
   0: R;
   1: InferDependenciesRecord<T>;
+  readonly [tag]: null;
 }
 
 export type AnyService = Service<string | symbol, any>;
@@ -43,6 +47,6 @@ export const compute =
       // @ts-ignore
       ...deps.map((d) =>
         // @ts-ignore
-        typeof d === "function" ? (c[d] ??= d(c)) : c[d],
+        typeof d === 'function' ? (c[d] ??= d(c)) : c[d],
       ),
     );
