@@ -1,18 +1,19 @@
-import { di } from "udic";
+import * as di from 'udic';
 
-const rand = di.service("rand")<number>();
-const computed = di.compute((val) => val + 1, rand);
+const computed = di.compute<
+  di.Service<'rand', number> | di.Service<'rand1', number>
+>()((c) => c.rand * c.rand1 + 1);
 
-const rand1 = di.service("rand1")<number>();
-const computed1 = di.compute(
-  (val, computed0) => val + computed0,
-  rand1,
-  computed,
+const computed1 = di.compute<typeof computed | di.Service<'rand2', number>>()(
+  (c) => computed(c)() / c.rand2,
 );
 
 console.log(
   computed1({
     rand: 9,
-    rand1: 9,
-  }),
+  })({
+    rand1: 10,
+  })({
+    rand2: 11,
+  })(),
 );
