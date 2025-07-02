@@ -13,7 +13,7 @@ export interface Service<T extends string | symbol, in out K> {
 }
 
 export interface Compute<in out T, in out R> {
-  (args: T): R;
+  (c: T): R;
   0: R;
   [_]: T;
 }
@@ -50,7 +50,7 @@ export const derive =
     f: (...args: InferDependencies<T>) => R,
   ): Compute<InferRecord<T>, R> =>
   // @ts-ignore
-  (c = {}) =>
+  (c) =>
     f(
       // @ts-ignore
       ...deps.map((d: any) =>
