@@ -1,19 +1,34 @@
 import * as di from 'udic';
 
-const computed = di.compute<
-  di.Service<'rand', number> | di.Service<'rand1', number>
->()((c) => c.rand * c.rand1 + 1);
+// Create a service that generates random number
+const randNumber = di.service('randNumber')<() => number>();
 
-const computed1 = di.compute<typeof computed | di.Service<'rand2', number>>()(
-  (c) => computed(c)() / c.rand2,
+// Use the service
+const computed = di.derive(
+  [randNumber],
+  (getRandNumber) => getRandNumber() + 1
+);
+
+// Create a service that generates random string
+const randString = di.service('randString')<() => string>();
+
+// Use the computed value of `computed`
+const computed1 = di.derive(
+  [randString, computed],
+  (getRandString, computedValue) => getRandString() + ': ' + computedValue,
 );
 
 console.log(
+  // Provide implementations of services
   computed1({
-    rand: 9,
-  })({
-    rand1: 10,
-  })({
-    rand2: 11,
-  })(),
-);
+    randNumber: () => Math.random(),
+    randString: () => crypto.randomUUID(),
+  }),
+); // Output: '<random uuid>: <random number + 1>'
+
+console.log(
+  computed1({
+    randNumber: () => 0,
+    randString: () => 'reve'
+  })
+); // Output: 'reve: 1'

@@ -1,34 +1,58 @@
 declare const _: unique symbol;
-type _ = typeof _;
-
-export type Service<K extends string | symbol, V> = K & {
-  [_]: undefined extends K
-    ? {
-        [k in K]?: undefined;
-      }
-    : { [k in K]: V };
-};
-export type Func<Required, R> = (keyof Required extends never
-  ? () => R
-  : <Props extends Partial<Required>>(
-      deps: Props,
-    ) => Func<Omit<Required, keyof Props>, R>) & { [_]: Required };
-
-export type Dependency = Service<string | symbol, any> | Func<any, any>;
 
 type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (
   x: infer I,
 ) => void
   ? I
   : never;
-export type InferProps<T extends Dependency> = UnionToIntersection<T[_]>;
 
-const factory = (f: any) => {
-  const curry = (prev: any, deps: any) =>
-    deps == null ? f(prev as any) : (d: any) => curry({ ...deps, ...prev }, d);
-  return (d: any) => curry({}, d);
+export interface Service<T extends string | symbol, in out K> {
+  0: K;
+  [_]: undefined extends K ? { [k in T]?: K } : { [k in T]: K };
+}
+
+export interface Compute<in out T extends Dependency[], in out R> {
+  (args: InferRecord<T>): R;
+  0: R;
+  [_]: InferRecord<T>;
+}
+
+export type AnyService = Service<string | symbol, any>;
+export type AnyCompute = Compute<any[], any>;
+export type Dependency = AnyService | AnyCompute;
+
+export type InferDependencies<T extends Dependency[]> = {
+  [K in keyof T]: T[K][0];
 };
 
-export const compute = <T extends Dependency>(): (<const R>(
-  fn: (c: InferProps<T>) => R,
-) => Func<InferProps<T>, R>) => factory as any;
+export type InferRecord<T extends Dependency[]> = UnionToIntersection<
+  T[number][typeof _]
+>;
+
+/**
+ * Create a service
+ * @param name - The service name
+ */
+export const service =
+  <T extends string | symbol>(name: T): (<K>() => Service<T, K>) =>
+  () =>
+    name as any;
+
+/**
+ * Create a service that relies on other services
+ * @param deps - The service dependencies
+ * @param f
+ */
+export const derive =
+  <const T extends Dependency[], const R>(
+    deps: T,
+    f: (...args: InferDependencies<T>) => R,
+  ): Compute<T, R> =>
+  // @ts-ignore
+  (c) =>
+    // @ts-ignore
+    f(...deps.map(
+      (d: any) =>
+        // @ts-ignore
+        typeof d === 'function' ? (c[d] ??= d(c)) : c[d]
+    ));
