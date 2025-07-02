@@ -1,4 +1,5 @@
 declare const _: unique symbol;
+type _ = typeof _;
 
 type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (
   x: infer I,
@@ -11,14 +12,14 @@ export interface Service<T extends string | symbol, in out K> {
   [_]: undefined extends K ? { [k in T]?: K } : { [k in T]: K };
 }
 
-export interface Compute<in out T extends Dependency[], in out R> {
-  (args: InferRecord<T>): R;
+export interface Compute<in out T, in out R> {
+  (args: T): R;
   0: R;
-  [_]: InferRecord<T>;
+  [_]: T;
 }
 
 export type AnyService = Service<string | symbol, any>;
-export type AnyCompute = Compute<any[], any>;
+export type AnyCompute = Compute<any, any>;
 export type Dependency = AnyService | AnyCompute;
 
 export type InferDependencies<T extends Dependency[]> = {
@@ -26,7 +27,7 @@ export type InferDependencies<T extends Dependency[]> = {
 };
 
 export type InferRecord<T extends Dependency[]> = UnionToIntersection<
-  T[number][typeof _]
+  T[number][_]
 >;
 
 /**
@@ -47,12 +48,24 @@ export const derive =
   <const T extends Dependency[], const R>(
     deps: T,
     f: (...args: InferDependencies<T>) => R,
-  ): Compute<T, R> =>
+  ): Compute<InferRecord<T>, R> =>
   // @ts-ignore
-  (c) =>
-    // @ts-ignore
-    f(...deps.map(
-      (d: any) =>
+  (c = {}) =>
+    f(
+      // @ts-ignore
+      ...deps.map((d: any) =>
         // @ts-ignore
-        typeof d === 'function' ? (c[d] ??= d(c)) : c[d]
-    ));
+        typeof d === 'function' ? (c[d] ??= d(c)) : c[d],
+      ),
+    );
+
+/**
+ * Inject some dependencies to the compute
+ * @param compute
+ * @param deps
+ */
+export const inject = <T extends AnyCompute, D extends Partial<T[_]>>(
+  compute: T,
+  deps: D,
+): Compute<Omit<T[_], keyof D>, T[0]> =>
+  ((c: any) => compute({ ...c, ...deps })) as any;
