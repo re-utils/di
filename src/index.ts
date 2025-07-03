@@ -1,5 +1,6 @@
-declare const _: unique symbol;
-type _ = typeof _;
+// Hide internal types
+declare const _t: unique symbol;
+declare const _d: unique symbol;
 
 type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (
   x: infer I,
@@ -12,19 +13,19 @@ type Prettify<T> = {
 } & {};
 
 export interface Service<in out T extends string | symbol, in out K> {
-  0: K;
-  [_]: undefined extends K ? { [k in T]?: K } : { [k in T]: K };
+  [_t]: K;
+  [_d]: undefined extends K ? { [k in T]?: K } : { [k in T]: K };
 }
 
 export interface Compute<in out T, in out R> {
+  [_t]: R;
+  [_d]: T;
   (c: T): R;
-  0: R;
-  [_]: T;
-}
+};
 
 export type Dependency = Service<any, any> | Compute<any, any>;
 export type InferDependencies<T extends Dependency> = Prettify<
-  UnionToIntersection<T[_]>
+  UnionToIntersection<T[typeof _d]>
 >;
 
 /**
@@ -37,7 +38,7 @@ export const service =
     name as any;
 
 /**
- * Create a service that relies on other services
+ * Create a compute that relies on other services or computes
  * @param deps - The service dependencies
  * @param f
  */
@@ -46,7 +47,7 @@ export const derive =
     deps: T,
     f: (
       ...args: {
-        [K in keyof T]: T[K][0];
+        [K in keyof T]: T[K][typeof _t]
       }
     ) => R,
   ): Compute<InferDependencies<T[number]>, R> =>
@@ -61,7 +62,7 @@ export const derive =
     );
 
 /**
- * Inject some dependencies to the compute
+ * Inject dependencies to the compute
  * @param compute
  * @param deps - Dependencies to inject
  */
