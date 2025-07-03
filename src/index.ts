@@ -62,10 +62,10 @@ export const derive =
 /**
  * Inject some dependencies to the compute
  * @param compute
- * @param deps
+ * @param deps - Dependencies to inject
  */
 export const inject = <T extends AnyCompute, D extends Partial<T[_]>>(
   compute: T,
-  deps: D,
+  d: D,
 ): Compute<Omit<T[_], keyof D>, T[0]> =>
-  ((c: any) => compute({ ...c, ...deps })) as any;
+  ((c: any) => compute(Object.assign(c, d))) as any;
