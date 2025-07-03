@@ -68,4 +68,4 @@ export const inject = <T extends AnyCompute, D extends Partial<T[_]>>(
   compute: T,
   d: D,
 ): Compute<Omit<T[_], keyof D>, T[0]> =>
-  ((c: any) => compute(Object.assign(c, d))) as any;
+  ((c: any) => compute({ ...c, ...d })) as any;

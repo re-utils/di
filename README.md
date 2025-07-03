@@ -1,4 +1,4 @@
-A simple dependency injection library.
+A dependency injection library.
 
 # Examples
 ```ts
