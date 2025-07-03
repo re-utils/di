@@ -7,7 +7,11 @@ type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (
   ? I
   : never;
 
-export interface Service<T extends string | symbol, in out K> {
+type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
+export interface Service<in out T extends string | symbol, in out K> {
   0: K;
   [_]: undefined extends K ? { [k in T]?: K } : { [k in T]: K };
 }
@@ -18,16 +22,9 @@ export interface Compute<in out T, in out R> {
   [_]: T;
 }
 
-export type AnyService = Service<string | symbol, any>;
-export type AnyCompute = Compute<any, any>;
-export type Dependency = AnyService | AnyCompute;
-
-export type InferDependencies<T extends Dependency[]> = {
-  [K in keyof T]: T[K][0];
-};
-
-export type InferRecord<T extends Dependency[]> = UnionToIntersection<
-  T[number][_]
+export type Dependency = Service<any, any> | Compute<any, any>;
+export type InferDependencies<T extends Dependency> = Prettify<
+  UnionToIntersection<T[_]>
 >;
 
 /**
@@ -47,8 +44,12 @@ export const service =
 export const derive =
   <const T extends Dependency[], const R>(
     deps: T,
-    f: (...args: InferDependencies<T>) => R,
-  ): Compute<InferRecord<T>, R> =>
+    f: (
+      ...args: {
+        [K in keyof T]: T[K][0];
+      }
+    ) => R,
+  ): Compute<InferDependencies<T[number]>, R> =>
   // @ts-ignore
   (c) =>
     f(
@@ -64,8 +65,8 @@ export const derive =
  * @param compute
  * @param deps - Dependencies to inject
  */
-export const inject = <T extends AnyCompute, D extends Partial<T[_]>>(
-  compute: T,
+export const inject = <T, R, D extends Partial<T>>(
+  compute: Compute<T, R>,
   d: D,
-): Compute<Omit<T[_], keyof D>, T[0]> =>
+): Compute<Prettify<Omit<T, keyof D>>, R> =>
   ((c: any) => compute({ ...c, ...d })) as any;

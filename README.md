@@ -1,10 +1,9 @@
 A dependency injection library.
-
-# Examples
 ```ts
 import * as di from 'udic';
 ```
 
+# Examples
 Run code that depends on a service:
 ```ts
 // Create a service that generates random number
