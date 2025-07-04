@@ -24,7 +24,9 @@ export interface Compute<in out T, in out R> {
 };
 
 export type Dependency = Service<any, any> | Compute<any, any>;
-export type InferDependencies<T extends Dependency> = Prettify<
+
+export type InferResult<T extends Dependency> = T[typeof _t];
+export type InferDependency<T extends Dependency> = Prettify<
   UnionToIntersection<T[typeof _d]>
 >;
 
@@ -33,7 +35,7 @@ export type InferDependencies<T extends Dependency> = Prettify<
  * @param name - The service name
  */
 export const service =
-  <T extends string | symbol>(name: T): (<K>() => Service<T, K>) =>
+  <T extends string | symbol>(name: T): (<K>() => Service<T, K> & T) =>
   () =>
     name as any;
 
@@ -47,10 +49,10 @@ export const derive =
     deps: T,
     f: (
       ...args: {
-        [K in keyof T]: T[K][typeof _t]
+        [K in keyof T]: InferResult<T[K]>
       }
     ) => R,
-  ): Compute<InferDependencies<T[number]>, R> =>
+  ): Compute<InferDependency<T[number]>, R> =>
   // @ts-ignore
   (c) =>
     f(
