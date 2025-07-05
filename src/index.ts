@@ -12,7 +12,7 @@ type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-export interface Service<in out T extends string | symbol, in out K> {
+export interface Service<in out T extends string, in out K> {
   [_t]: K;
   [_d]: undefined extends K ? { [k in T]?: K } : { [k in T]: K };
 }
@@ -35,7 +35,7 @@ export type InferDependency<T extends Dependency> = Prettify<
  * @param name - The service name
  */
 export const service =
-  <T extends string | symbol>(name: T): (<K>() => Service<T, K> & T) =>
+  <T extends string>(name: T): (<K>() => Service<T, K> & T) =>
   () =>
     name as any;
 
@@ -76,3 +76,15 @@ export const inject = <T, R, D extends Partial<T>>(
   d: D,
 ): Compute<Prettify<Omit<T, keyof D>>, R> =>
   tag((c: any) => compute({ ...c, ...d })) as any;
+
+export const layer = <C extends Record<string, Compute<any, any>>, D extends InferDependency<C[keyof C]>>(
+  r: C, d: D
+): Prettify<
+  {
+    [K in keyof C]: InferResult<C[K]>
+  } & D
+> => {
+  for (const k in r)
+    r[k] = r[k](d);
+  return Object.assign(r, d);
+}
