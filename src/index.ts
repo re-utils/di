@@ -21,7 +21,7 @@ export interface Compute<in out T, in out R> {
   [_t]: R;
   [_d]: T;
   (c: T): R;
-};
+}
 
 export type Dependency = Service<any, any> | Compute<any, any>;
 
@@ -39,32 +39,32 @@ export const service =
   () =>
     name as any;
 
+// @ts-ignore
+const tag = <const T>(f: T): T => (f[_t] = Symbol(), f);
+
 /**
  * Create a compute that relies on other services or computes
  * @param deps - The service dependencies
  * @param f
  */
-export const derive =
-  <const T extends Dependency[], const R>(
-    deps: T,
-    f: (
-      ...args: {
-        [K in keyof T]: InferResult<T[K]>
-      }
-    ) => R,
-  ): Compute<InferDependency<T[number]>, R> => {
-    const n = (c: any) =>
-      f(
+export const derive = <const T extends Dependency[], const R>(
+  deps: T,
+  f: (
+    ...args: {
+      [K in keyof T]: InferResult<T[K]>;
+    }
+  ) => R,
+): Compute<InferDependency<T[number]>, R> =>
+  // @ts-ignore
+  tag((c) =>
+    f(
+      // @ts-ignore
+      ...deps.map((d: any) =>
         // @ts-ignore
-        ...deps.map((d: any) =>
-          // @ts-ignore
-          typeof d === 'function' ? (c[d[_t]] ??= d(c)) : c[d],
-        ),
-      );
-    // Unique id for function
-    n[_t] = Symbol();
-    return n as any;
-  };
+        typeof d === 'function' ? (c[d[_t]] ??= d(c)) : c[d],
+      ),
+    ),
+  );
 
 /**
  * Inject dependencies to the compute
@@ -75,4 +75,4 @@ export const inject = <T, R, D extends Partial<T>>(
   compute: Compute<T, R>,
   d: D,
 ): Compute<Prettify<Omit<T, keyof D>>, R> =>
-  ((c: any) => compute({ ...c, ...d })) as any;
+  tag((c: any) => compute({ ...c, ...d })) as any;
