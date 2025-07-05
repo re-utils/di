@@ -1,5 +1,5 @@
 // Hide internal types
-declare const _t: unique symbol;
+const _t: unique symbol = Symbol();
 declare const _d: unique symbol;
 
 type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (
@@ -52,16 +52,19 @@ export const derive =
         [K in keyof T]: InferResult<T[K]>
       }
     ) => R,
-  ): Compute<InferDependency<T[number]>, R> =>
-  // @ts-ignore
-  (c) =>
-    f(
-      // @ts-ignore
-      ...deps.map((d: any) =>
+  ): Compute<InferDependency<T[number]>, R> => {
+    const n = (c: any) =>
+      f(
         // @ts-ignore
-        typeof d === 'function' ? (c[d] ??= d(c)) : c[d],
-      ),
-    );
+        ...deps.map((d: any) =>
+          // @ts-ignore
+          typeof d === 'function' ? (c[d[_t]] ??= d(c)) : c[d],
+        ),
+      );
+    // Unique id for function
+    n[_t] = Symbol();
+    return n as any;
+  };
 
 /**
  * Inject dependencies to the compute
