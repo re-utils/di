@@ -23,7 +23,7 @@ export interface Compute<in out T, in out R> {
   (c: T): R;
 }
 
-export interface Layer<
+export interface ServiceImpl<
   in out K extends string,
   in out D,
   in out R
@@ -84,18 +84,19 @@ export const inject = <T, R, D extends Partial<T>>(
 ): Compute<Prettify<Omit<T, keyof D>>, R> =>
   tag((c: any) => compute({ ...c, ...d })) as any;
 
-export const layer = <K extends string, T, D>(
+export const impl = <K extends string, T, D>(
   service: Service<K, T>,
   compute: Compute<D, T>,
-): Layer<K, D, T> => [service as any as K, compute] as any;
+): ServiceImpl<K, D, T> => [service as any as K, compute] as any;
 
-export const provide = <
-  const T extends Layer<any, any, any>[],
+export const merge = <
+  const T extends ServiceImpl<any, any, any>[],
   D extends InferDependency<T[number]>,
 >(
   layers: T,
   deps: D,
 ): Prettify<D & InferResult<T[number]>> => {
+  deps = { ...deps };
   for (let i = 0; i < layers.length; i++)
     // @ts-ignore
     deps[layers[i][0]] = layers[i][1](deps);
