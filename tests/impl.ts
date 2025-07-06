@@ -37,5 +37,8 @@ const logCtx = di.merge([logImpl], {
 });
 const dbCtx = di.merge([dbImpl], logCtx);
 
-const main = di.derive([db], (db) => db.query('SELECT * FROM users'));
-console.log(main(dbCtx));
+// Main program use DB
+const main = di.derive([db], (db) => {
+  console.log(db.query('SELECT * FROM users'));
+});
+main(dbCtx);
