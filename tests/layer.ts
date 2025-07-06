@@ -10,22 +10,21 @@ type TLog = (msg: string) => void;
 const log = di.service('log')<TLog>();
 
 interface TDB {
-  query: (sql: string) => unknown;
+  query: (sql: string) => { result: string };
 }
 const db = di.service('db')<TDB>();
 
 // Create service implementations that depends on other services
 const logLayer = di.layer(log, di.derive(
   [config],
-  ({ logLevel }): TLog =>
-    (msg) => {
-      console.log(`[${logLevel}] ${msg}`);
-    },
+  ({ logLevel }) => (msg) => {
+    console.log(`[${logLevel}] ${msg}`);
+  },
 ));
 
 const dbLayer = di.layer(db, di.derive(
   [config, log],
-  ({ connection }, log): TDB => ({
+  ({ connection }, log) => ({
     query: (sql: string) => {
       log('Executing query: ' + sql);
       return { result: 'Results from ' + connection };
@@ -34,13 +33,13 @@ const dbLayer = di.layer(db, di.derive(
 ));
 
 // Provide implementations for the layer
-const logLive = di.provide([logLayer], {
+const logImpl = di.provide([logLayer], {
   config: {
     logLevel: 'INFO',
     connection: 'mysql://username:password@hostname:port/database_name',
   },
 });
-const dbLive = di.provide([dbLayer], logLive);
+const dbImpl = di.provide([dbLayer], logImpl);
 
 const main = di.derive([db], (db) => db.query('SELECT * FROM users'));
-console.log(main(dbLive));
+console.log(main(dbImpl));

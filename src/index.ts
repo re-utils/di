@@ -25,12 +25,11 @@ export interface Compute<in out T, in out R> {
 
 export interface Layer<
   in out K extends string,
-  in out C extends Compute<any, any>,
+  in out D,
+  in out R
 > {
-  [_t]: { [k in K]: InferResult<C> }
-  [_d]: InferDependency<C>
-  0: K;
-  1: C;
+  [_t]: { [k in K]: R }
+  [_d]: D
 }
 
 export type InferResult<T extends { [_t]: any }> = T[typeof _t];
@@ -43,7 +42,7 @@ export type InferDependency<T extends { [_d]: any }> = Prettify<
  * @param name - The service name
  */
 export const service =
-  <T extends string>(name: T): (<K>() => Service<T, K> & T) =>
+  <const T extends string>(name: T): (<K>() => Service<T, K> & T) =>
   () =>
     name as any;
 
@@ -55,7 +54,7 @@ const tag = <const T>(f: T): T => ((f[_t] = Symbol()), f);
  * @param deps - The service dependencies
  * @param f
  */
-export const derive = <const T extends (Service<any, any> | Compute<any, any>)[], const R>(
+export const derive = <const T extends (Service<any, any> | Compute<any, any>)[], R>(
   deps: T,
   f: (
     ...args: {
@@ -85,14 +84,14 @@ export const inject = <T, R, D extends Partial<T>>(
 ): Compute<Prettify<Omit<T, keyof D>>, R> =>
   tag((c: any) => compute({ ...c, ...d })) as any;
 
-export const layer = <T, K extends string, const C extends Compute<any, T>>(
+export const layer = <K extends string, T, D>(
   service: Service<K, T>,
-  compute: C,
-): Layer<K, C> => [service as any as K, compute] as any;
+  compute: Compute<D, T>,
+): Layer<K, D, T> => [service as any as K, compute] as any;
 
 export const provide = <
-  const T extends Layer<any, any>[],
-  const D extends InferDependency<T[number]>,
+  const T extends Layer<any, any, any>[],
+  D extends InferDependency<T[number]>,
 >(
   layers: T,
   deps: D,
