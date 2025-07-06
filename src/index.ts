@@ -12,9 +12,9 @@ type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-export interface Service<in out T extends string, in out K> {
-  [_t]: K;
-  [_d]: undefined extends K ? { [k in T]?: K } : { [k in T]: K };
+export interface Service<in out K extends string, in out T> {
+  [_t]: T;
+  [_d]: undefined extends T ? { [k in K]?: T } : { [k in K]: T };
 }
 
 export interface Compute<in out T, in out R> {
@@ -23,10 +23,18 @@ export interface Compute<in out T, in out R> {
   (c: T): R;
 }
 
-export type Dependency = Service<any, any> | Compute<any, any>;
+export interface Layer<
+  in out K extends string,
+  in out C extends Compute<any, any>,
+> {
+  [_t]: { [k in K]: InferResult<C> }
+  [_d]: InferDependency<C>
+  0: K;
+  1: C;
+}
 
-export type InferResult<T extends Dependency> = T[typeof _t];
-export type InferDependency<T extends Dependency> = Prettify<
+export type InferResult<T extends { [_t]: any }> = T[typeof _t];
+export type InferDependency<T extends { [_d]: any }> = Prettify<
   UnionToIntersection<T[typeof _d]>
 >;
 
@@ -40,14 +48,14 @@ export const service =
     name as any;
 
 // @ts-ignore
-const tag = <const T>(f: T): T => (f[_t] = Symbol(), f);
+const tag = <const T>(f: T): T => ((f[_t] = Symbol()), f);
 
 /**
  * Create a compute that relies on other services or computes
  * @param deps - The service dependencies
  * @param f
  */
-export const derive = <const T extends Dependency[], const R>(
+export const derive = <const T extends (Service<any, any> | Compute<any, any>)[], const R>(
   deps: T,
   f: (
     ...args: {
@@ -77,14 +85,20 @@ export const inject = <T, R, D extends Partial<T>>(
 ): Compute<Prettify<Omit<T, keyof D>>, R> =>
   tag((c: any) => compute({ ...c, ...d })) as any;
 
-export const layer = <C extends Record<string, Compute<any, any>>, D extends InferDependency<C[keyof C]>>(
-  r: C, d: D
-): Prettify<
-  {
-    [K in keyof C]: InferResult<C[K]>
-  } & D
-> => {
-  for (const k in r)
-    r[k] = r[k](d);
-  return Object.assign(r, d);
+export const layer = <T, K extends string, const C extends Compute<any, T>>(
+  service: Service<K, T>,
+  compute: C,
+): Layer<K, C> => [service as any as K, compute] as any;
+
+export const provide = <
+  const T extends Layer<any, any>[],
+  const D extends InferDependency<T[number]>,
+>(
+  layers: T,
+  deps: D,
+): Prettify<D & InferResult<T[number]>> => {
+  for (let i = 0; i < layers.length; i++)
+    // @ts-ignore
+    deps[layers[i][0]] = layers[i][1](deps);
+  return deps as any;
 }

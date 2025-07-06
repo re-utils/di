@@ -1,44 +1,46 @@
-import { service, derive, layer } from 'udic';
+import * as di from 'udic';
 
 interface TConfig {
   logLevel: string;
   connection: string;
-};
-const config = service('config')<TConfig>();
+}
+const config = di.service('config')<TConfig>();
 
 type TLog = (msg: string) => void;
-const log = service('log')<TLog>();
+const log = di.service('log')<TLog>();
 
 interface TDB {
-  query: (sql: string) => unknown
-};
-const db = service('db')<TDB>();
+  query: (sql: string) => unknown;
+}
+const db = di.service('db')<TDB>();
 
-const logLayer = layer({
-  log: derive(
-    [config],
-    ({ logLevel }): TLog => (msg) => {
+// Create service implementations that depends on other services
+const logLayer = di.layer(log, di.derive(
+  [config],
+  ({ logLevel }): TLog =>
+    (msg) => {
       console.log(`[${logLevel}] ${msg}`);
-    }
-  )
-}, {
+    },
+));
+
+const dbLayer = di.layer(db, di.derive(
+  [config, log],
+  ({ connection }, log): TDB => ({
+    query: (sql: string) => {
+      log('Executing query: ' + sql);
+      return { result: 'Results from ' + connection };
+    },
+  }),
+));
+
+// Provide implementations for the layer
+const logLive = di.provide([logLayer], {
   config: {
     logLevel: 'INFO',
-    connection: 'mysql://username:password@hostname:port/database_name'
-  }
+    connection: 'mysql://username:password@hostname:port/database_name',
+  },
 });
+const dbLive = di.provide([dbLayer], logLive);
 
-const dbLayer = layer({
-  db: derive(
-    [config, log],
-    ({ connection }, log): TDB => ({
-      query: (sql: string) => {
-        log('Executing query: ' + sql);
-        return { result: 'Results from ' + connection };
-      }
-    })
-  )
-}, logLayer);
-
-const main = derive([db], (db) => db.query('SELECT * FROM users'));
-console.log(main(dbLayer));
+const main = di.derive([db], (db) => db.query('SELECT * FROM users'));
+console.log(main(dbLive));
