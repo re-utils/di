@@ -12,6 +12,8 @@ type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
+type List<T> = [T, ...T[]];
+
 export interface Service<in out K extends string, in out T> {
   [_t]: T;
   [_d]: undefined extends T ? { [k in K]?: T } : { [k in K]: T };
@@ -23,13 +25,9 @@ export interface Compute<in out T, in out R> {
   (c: T): R;
 }
 
-export interface ServiceImpl<
-  in out K extends string,
-  in out D,
-  in out R
-> {
-  [_t]: { [k in K]: R }
-  [_d]: D
+export interface Impl<in out K extends string, in out D, in out R> {
+  [_t]: { [k in K]: R };
+  [_d]: D;
 }
 
 export type InferResult<T extends { [_t]: any }> = T[typeof _t];
@@ -54,7 +52,10 @@ const tag = <const T>(f: T): T => ((f[_t] = Symbol()), f);
  * @param deps - The service dependencies
  * @param f
  */
-export const derive = <const T extends (Service<any, any> | Compute<any, any>)[], R>(
+export const use = <
+  const T extends List<Service<any, any> | Compute<any, any>>,
+  R,
+>(
   deps: T,
   f: (
     ...args: {
@@ -84,21 +85,31 @@ export const inject = <T, R, D extends Partial<T>>(
 ): Compute<Prettify<Omit<T, keyof D>>, R> =>
   tag((c: any) => compute({ ...c, ...d })) as any;
 
+/**
+ * Create an implementation of the service that depends on other services
+ * @param service
+ * @param compute
+ */
 export const impl = <K extends string, T, D>(
   service: Service<K, T>,
   compute: Compute<D, T>,
-): ServiceImpl<K, D, T> => [service as any as K, compute] as any;
+): Impl<K, D, T> => [service as any, compute] as any;
 
-export const merge = <
-  const T extends ServiceImpl<any, any, any>[],
+/**
+ * Provide dependencies to implementations
+ * @param impls
+ * @param deps
+ */
+export const link = <
+  const T extends List<Impl<any, any, any>>,
   D extends InferDependency<T[number]>,
 >(
-  layers: T,
+  impls: T,
   deps: D,
 ): Prettify<D & InferResult<T[number]>> => {
   deps = { ...deps };
-  for (let i = 0; i < layers.length; i++)
+  for (let i = 0; i < impls.length; i++)
     // @ts-ignore
-    deps[layers[i][0]] = layers[i][1](deps);
+    deps[impls[i][0]] = impls[i][1](deps);
   return deps as any;
-}
+};
