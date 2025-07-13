@@ -1,51 +1,55 @@
-// Hide internal types
 const _t: unique symbol = Symbol();
 declare const _d: unique symbol;
 
-type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (
+// Utils
+type MergeUnion<U> = (U extends any ? (x: U) => void : never) extends (
   x: infer I,
 ) => void
   ? I
   : never;
-
+type UnwrapReturn<T> = T extends () => infer R ? R : T;
 type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
-
 type List<T> = [T, ...T[]];
 
-export interface Service<in out K extends string, in out T> {
+export type Dependency = (() => Service) | Compute;
+
+// Inter types
+export type TDependency<T extends Dependency | Impl> = MergeUnion<
+  UnwrapReturn<T>[typeof _d]
+>;
+export type TResult<T extends Dependency | Impl> = UnwrapReturn<T>[typeof _t];
+
+export interface Service<in out K extends string = any, in out T = any> {
   [_t]: T;
   [_d]: undefined extends T ? { [k in K]?: T } : { [k in K]: T };
 }
-
-export interface Compute<in out T, in out R> {
+export interface Compute<in out T = any, in out R = any> {
   [_t]: R;
   [_d]: T;
   (c: T): R;
 }
 
-export interface Impl<in out K extends string, in out D, in out R> {
+export interface Impl<
+  in out K extends string = any,
+  in out D = any,
+  in out R = any,
+> {
   [_t]: { [k in K]: R };
   [_d]: D;
 }
-
-export type InferResult<T extends { [_t]: any }> = T[typeof _t];
-export type InferDependency<T extends { [_d]: any }> = Prettify<
-  UnionToIntersection<T[typeof _d]>
->;
 
 /**
  * Create a service
  * @param name - The service name
  */
 export const service =
-  <const T extends string>(name: T): (<K>() => Service<T, K> & T) =>
-  () =>
-    name as any;
+  // Type hack: Assign type without needing a runtime call
+  <const T extends string>(name: T): (<K>() => Service<T, K>) => name as any;
 
 // @ts-ignore
-const tag = <const T>(f: T): T => ((f[_t] = Symbol()), f);
+const _ = <const T>(f: T): T => ((f[_t] = Symbol()), f);
 
 /**
  * Create a compute that relies on other services or computes
@@ -53,18 +57,18 @@ const tag = <const T>(f: T): T => ((f[_t] = Symbol()), f);
  * @param f
  */
 export const use = <
-  const T extends List<Service<any, any> | Compute<any, any>>,
+  const T extends List<(() => Service<any, any>) | Compute<any, any>>,
   R,
 >(
   deps: T,
   f: (
     ...args: {
-      [K in keyof T]: InferResult<T[K]>;
+      [K in keyof T]: TResult<T[K]>;
     }
   ) => R,
-): Compute<InferDependency<T[number]>, R> =>
+): Compute<TDependency<T[number]>, R> =>
   // @ts-ignore
-  tag((c) =>
+  _((c) =>
     f(
       // @ts-ignore
       ...deps.map((d: any) =>
@@ -83,7 +87,7 @@ export const inject = <T, R, D extends Partial<T>>(
   compute: Compute<T, R>,
   d: D,
 ): Compute<Prettify<Omit<T, keyof D>>, R> =>
-  tag((c: any) => compute({ ...c, ...d })) as any;
+  _((c: any) => compute({ ...c, ...d })) as any;
 
 /**
  * Create an implementation of the service that depends on other services
@@ -91,7 +95,7 @@ export const inject = <T, R, D extends Partial<T>>(
  * @param compute
  */
 export const impl = <K extends string, T, D>(
-  service: Service<K, T>,
+  service: () => Service<K, T>,
   compute: Compute<D, T>,
 ): Impl<K, D, T> => [service as any, compute] as any;
 
@@ -101,13 +105,13 @@ export const impl = <K extends string, T, D>(
  * @param deps
  */
 export const link = <
-  const T extends List<Impl<any, any, any>>,
-  D extends InferDependency<T[number]>,
+  const T extends List<Impl>,
+  D extends TDependency<T[number]>,
 >(
   impls: T,
   deps: D,
-): Prettify<D & InferResult<T[number]>> => {
-  deps = { ...deps };
+): Prettify<D & TResult<T[number]>> => {
+  deps = { ...(deps as any) };
   for (let i = 0; i < impls.length; i++)
     // @ts-ignore
     deps[impls[i][0]] = impls[i][1](deps);
