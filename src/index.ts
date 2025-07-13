@@ -30,7 +30,6 @@ export interface Compute<in out T = any, in out R = any> {
   [_d]: T;
   (c: T): R;
 }
-
 export interface Impl<
   in out K extends string = any,
   in out D = any,
@@ -57,7 +56,7 @@ const _ = <const T>(f: T): T => ((f[_t] = Symbol()), f);
  * @param f
  */
 export const use = <
-  const T extends List<(() => Service<any, any>) | Compute<any, any>>,
+  const T extends List<Dependency>,
   R,
 >(
   deps: T,
