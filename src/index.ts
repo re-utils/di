@@ -2,13 +2,13 @@ const _t: unique symbol = Symbol();
 declare const _d: unique symbol;
 
 // Utils
-type MergeUnion<U> = (U extends any ? (x: U) => void : never) extends (
+type UnionToIntersect<U> = (U extends any ? (x: U) => void : never) extends (
   x: infer I,
 ) => void
   ? I
   : never;
 type UnwrapReturn<T> = T extends () => infer R ? R : T;
-type Prettify<T> = {
+type Evaluate<T> = {
   [K in keyof T]: T[K];
 } & {};
 type List<T> = [T, ...T[]];
@@ -16,7 +16,7 @@ type List<T> = [T, ...T[]];
 export type Dependency = (() => Service) | Compute;
 
 // Inter types
-export type TDependency<T extends Dependency | Impl> = MergeUnion<
+export type TDependency<T extends Dependency | Impl> = UnionToIntersect<
   UnwrapReturn<T>[typeof _d]
 >;
 export type TResult<T extends Dependency | Impl> = UnwrapReturn<T>[typeof _t];
@@ -85,7 +85,7 @@ export const use = <
 export const inject = <T, R, D extends Partial<T>>(
   compute: Compute<T, R>,
   d: D,
-): Compute<Prettify<Omit<T, keyof D>>, R> =>
+): Compute<Evaluate<Omit<T, keyof D>>, R> =>
   _((c: any) => compute({ ...c, ...d })) as any;
 
 /**
@@ -109,7 +109,7 @@ export const link = <
 >(
   impls: T,
   deps: D,
-): Prettify<D & TResult<T[number]>> => {
+): Evaluate<D & UnionToIntersect<TResult<T[number]>>> => {
   deps = { ...(deps as any) };
   for (let i = 0; i < impls.length; i++)
     // @ts-ignore
