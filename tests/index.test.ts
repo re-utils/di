@@ -3,10 +3,10 @@ import * as di from 'udic';
 
 test('One dependency', () => {
   // Create a service that generates random number
-  const randNumber = di.service('randNumber')<() => number>();
+  const randNumber = di.service('randNumber')<() => number>;
 
   // Use the service
-  const compute = di.derive(
+  const compute = di.use(
     [randNumber],
     (getRandNumber) => getRandNumber() + 1,
   );
@@ -16,16 +16,16 @@ test('One dependency', () => {
 
 test('Nested dependencies', () => {
   // Create a service that generates random number
-  const randNumber = di.service('randNumber')<() => number>();
+  const randNumber = di.service('randNumber')<() => number>;
 
   // Use the service
-  const compute = di.derive(
+  const compute = di.use(
     [randNumber],
     (getRandNumber) => getRandNumber() + 1,
   );
 
   // Use `compute()` within current context
-  const anotherCompute = di.derive(
+  const anotherCompute = di.use(
     [compute],
     (computedValue) => computedValue * 2,
   );
@@ -35,19 +35,19 @@ test('Nested dependencies', () => {
 
 test('Multiple dependencies', () => {
   // Create a service that generates random number
-  const randNumber = di.service('randNumber')<() => number>();
+  const randNumber = di.service('randNumber')<() => number>;
 
   // Use the service
-  const computeNumber = di.derive(
+  const computeNumber = di.use(
     [randNumber],
     (getRandNumber) => getRandNumber() + 1,
   );
 
   // Create a service that generates random string
-  const randString = di.service('randString')<() => string>();
+  const randString = di.service('randString')<() => string>;
 
   // Use the computed value of `computed`
-  const computeString = di.derive(
+  const computeString = di.use(
     [randString, computeNumber],
     (getRandString, number) => getRandString() + ': ' + number,
   );
@@ -62,19 +62,19 @@ test('Multiple dependencies', () => {
 
 test('Inject not all dependencies', () => {
   // Create a service that generates random number
-  const randNumber = di.service('randNumber')<() => number>();
+  const randNumber = di.service('randNumber')<() => number>;
 
   // Use the service
-  const computeNumber = di.derive(
+  const computeNumber = di.use(
     [randNumber],
     (getRandNumber) => getRandNumber() + 1,
   );
 
   // Create a service that generates random string
-  const randString = di.service('randString')<() => string>();
+  const randString = di.service('randString')<() => string>;
 
   // Use the computed value of `computed`
-  const computeString = di.derive(
+  const computeString = di.use(
     [randString, computeNumber],
     (getRandString, number) => getRandString() + ': ' + number,
   );
