@@ -48,7 +48,7 @@ export const service =
   <const T extends string>(name: T): (<K>() => Service<T, K>) => name as any;
 
 // @ts-ignore
-const _ = <const T>(f: T): T => ((f[_t] = Symbol()), f);
+const _ = <const T>(f: T): T => (f[_t] = Symbol(), f);
 
 /**
  * Create a compute that relies on other services or computes
@@ -67,15 +67,15 @@ export const use = <
   ) => R,
 ): Compute<TDependency<T[number]>, R> =>
   // @ts-ignore
-  _((c) =>
-    f(
+  _((c) => {
+    const args = new Array(deps.length);
+    for (let i = 0; i < deps.length; i++) {
+      const d = deps[i];
       // @ts-ignore
-      ...deps.map((d: any) =>
-        // @ts-ignore
-        typeof d === 'function' ? (c[d[_t]] ??= d(c)) : c[d],
-      ),
-    ),
-  );
+      args[i] = typeof d === 'string' ? c[d] : c[d[_t]] ??= d(c);
+    }
+    return f(...args as any);
+  });
 
 /**
  * Inject dependencies to the compute
@@ -110,7 +110,7 @@ export const link = <
   impls: T,
   deps: D,
 ): Evaluate<D & UnionToIntersect<TResult<T[number]>>> => {
-  deps = { ...(deps as any) };
+  deps = { ...deps as any };
   for (let i = 0; i < impls.length; i++)
     // @ts-ignore
     deps[impls[i][0]] = impls[i][1](deps);

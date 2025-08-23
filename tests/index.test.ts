@@ -6,10 +6,7 @@ test('One dependency', () => {
   const randNumber = di.service('randNumber')<() => number>;
 
   // Use the service
-  const compute = di.use(
-    [randNumber],
-    (getRandNumber) => getRandNumber() + 1,
-  );
+  const compute = di.use([randNumber], (getRandNumber) => getRandNumber() + 1);
 
   expect(compute({ randNumber: () => 0 })).toBe(1);
 });
@@ -19,10 +16,7 @@ test('Nested dependencies', () => {
   const randNumber = di.service('randNumber')<() => number>;
 
   // Use the service
-  const compute = di.use(
-    [randNumber],
-    (getRandNumber) => getRandNumber() + 1,
-  );
+  const compute = di.use([randNumber], (getRandNumber) => getRandNumber() + 1);
 
   // Use `compute()` within current context
   const anotherCompute = di.use(
