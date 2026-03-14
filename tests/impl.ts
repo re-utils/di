@@ -1,44 +1,43 @@
 import * as di from 'udic';
 
-// Declarations
-const config = di.service('config')<{
-  logLevel: string;
-  connection: string;
-}>;
-const log = di.service('log')<(msg: string) => void>;
-const db = di.service('db')<{
-  query: (sql: string) => { result: string };
-}>;
+type Config = {
+  config: {
+    logLevel: string;
+    connection: string;
+  }
+}
 
-const main = di.use([db], (db) => {
-  console.log(db.query('SELECT * FROM users'));
-});
+const Logger = di.impl(({ config: { logLevel } }: di.Context<Config>) => ({
+  logger: (msg: string) => {
+    console.log(`[${logLevel}] ${msg}`);
+  },
+}));
 
-// Implementations
-const logImpl = di.impl(
-  log,
-  di.use([config], (config) => (msg) => {
-    console.log(`[${config.logLevel}] ${msg}`);
+const Database = di.implAsync(
+  async ({
+    config: { connection },
+    logger,
+  }: di.Context<Config | typeof Logger>) => ({
+    db: {
+      query: async (sql: string) => {
+        logger('Executing query: ' + sql);
+        return { result: 'Results from ' + connection };
+      },
+    },
   }),
 );
-const dbImpl = di.impl(
-  db,
-  di.use([config, log], ({ connection }, log) => ({
-    query: (sql: string) => {
-      log('Executing query: ' + sql);
-      return { result: 'Results from ' + connection };
+
+const c = await di.linkAsync(
+  di.link(
+    {
+      config: {
+        logLevel: 'DEBUG',
+        connection: 'postgres://localhost:1234',
+      },
     },
-  })),
+    Logger,
+  ),
+  Database,
 );
 
-// Link dependencies
-const logDeps = di.link([logImpl], {
-  config: {
-    logLevel: 'INFO',
-    connection: 'mysql://username:password@hostname:port/database_name',
-  },
-});
-const dbDeps = di.link([dbImpl], logDeps);
-
-// Run with linked dependencies
-main(dbDeps);
+console.log(await c.db.query('SELECT * FROM users'));
