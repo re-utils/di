@@ -2,74 +2,62 @@ type ObjectUnionToIntersect<T> = { [K in T as K & string]: K }[any];
 
 export type ContextArgs =
   | { [key: string | symbol]: any }
-  | ((c: {}, ...args: any[]) => any)
-  | Impl;
+  | ((...args: any[]) => any);
 export type Context<Deps extends ContextArgs> = ObjectUnionToIntersect<
-  Deps extends Impl
-    ? Awaited<Deps['infer']>
-    : Deps extends (c: infer C, ...args: any[]) => any
-      ? C
-      : Deps
+  Deps extends (() => infer Out extends {})
+    ? Awaited<Out>
+    : Deps extends ((c: infer In extends {}) => infer Out extends {})
+      ? In & Awaited<Out>
+      : Deps extends (c: infer C, ...args: any[]) => any
+        ? C
+        : Deps
 >;
 
-export interface Impl<in In = any, out Out extends {} = {}> {
-  infer: Out;
-  (c: In): Out;
-}
+export interface Impl {
+  <const F extends () => {}>(fn: F): F;
 
-export interface ImplFn {
-  <const F extends () => {}>(
-    fn: F,
-  ): F extends (() => infer Out extends {}) ? Impl<{}, Out> : never;
-
-  <const F extends (c: any) => {}>(
-    fn: F,
-  ): F extends ((c: infer In) => infer Out extends {}) ? Impl<In, Out> : never;
+  <const F extends (c: any) => {}>(fn: F): F;
 
   <const Out extends ContextArgs>(
     fn: (c: {}) => Context<Out>,
-  ): Impl<{}, Context<Out>>;
+  ): (c: {}) => Context<Out>;
 
   <const In extends ContextArgs, const Out extends ContextArgs>(
     fn: (c: Context<In>) => Context<Out>,
-  ): Impl<Context<In>, Context<Out>>;
+  ): (c: Context<In>) => Context<Out>;
 }
 
 /**
  * Create a sync implementation of a dependency.
  */
-export const impl: ImplFn = (fn: any) => fn;
+export const impl: Impl = (fn: any) => fn;
 
-export interface ImplAsyncFn {
-  <const F extends () => Promise<{}>>(
-    fn: F,
-  ): F extends (() => infer Out extends {}) ? Impl<{}, Out> : never;
+export interface ImplAsync {
+  <const F extends () => {} | Promise<{}>>(fn: F): F;
 
-  <const F extends (c: any) => Promise<{}>>(
-    fn: F,
-  ): F extends ((c: infer In) => infer Out extends {}) ? Impl<In, Out> : never;
+  <const F extends (c: any) => {} | Promise<{}>>(fn: F): F;
 
   <const Out extends ContextArgs>(
-    fn: (c: {}) => Promise<Context<Out>>,
-  ): Impl<{}, Promise<Context<Out>>>;
+    fn: (c: {}) => Context<Out> | Promise<Context<Out>>,
+  ): (c: {}) => Context<Out> | Promise<Context<Out>>;
 
   <const In extends ContextArgs, const Out extends ContextArgs>(
-    fn: (c: Context<In>) => Promise<Context<Out>>,
-  ): Impl<Context<In>, Promise<Context<Out>>>;
+    fn: (c: Context<In>) => Context<Out> | Promise<Context<Out>>,
+  ): (c: Context<In>) => Context<Out> | Promise<Context<Out>>;
 }
 
 /**
  * Create an async implementation of a dependency.
  */
-export const implAsync: ImplAsyncFn = (fn: any) => fn;
+export const implAsync: ImplAsync = (fn: any) => fn;
+
+type _ImplFn = (() => {} | Promise<{}>) | ((c: any) => {} | Promise<{}>);
+type _ImplFns = [_ImplFn, ..._ImplFn[]];
 
 /**
  * Link sync implementations.
  */
-export const link: <
-  const In extends {},
-  Impls extends [Impl<In, any>, ...Impl<In, any>[]],
->(
+export const link: <const In extends {}, Impls extends _ImplFns>(
   c: In,
   ...impls: Impls
 ) => In & ReturnType<Impls[number]> = (c, firstImpl, ...impls) => {
@@ -81,10 +69,7 @@ export const link: <
 /**
  * Link async implementations concurrently.
  */
-export const linkAsync: <
-  const In extends {},
-  Impls extends [Impl<In, any>, ...Impl<In, any>[]],
->(
+export const linkAsync: <const In extends {}, Impls extends _ImplFns>(
   c: In,
   ...impls: Impls
 ) => Promise<In & Awaited<ReturnType<Impls[number]>>> = async (c, ...impls) => {

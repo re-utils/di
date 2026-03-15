@@ -4,20 +4,18 @@ type Config = {
   config: {
     logLevel: string;
     connection: string;
-  }
-}
+  };
+};
 
 const Logger = di.impl(({ config: { logLevel } }: di.Context<Config>) => ({
   logger: (msg: string) => {
     console.log(`[${logLevel}] ${msg}`);
   },
 }));
+type Logger = typeof Logger;
 
 const Database = di.implAsync(
-  async ({
-    config: { connection },
-    logger,
-  }: di.Context<Config | typeof Logger>) => ({
+  async ({ config: { connection }, logger }: di.Context<Config | Logger>) => ({
     db: {
       query: async (sql: string) => {
         logger('Executing query: ' + sql);
