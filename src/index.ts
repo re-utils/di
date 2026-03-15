@@ -14,10 +14,6 @@ export type Context<Deps extends ContextArgs> = ObjectUnionToIntersect<
 >;
 
 export interface Impl {
-  <const F extends () => {}>(fn: F): F;
-
-  <const F extends (c: any) => {}>(fn: F): F;
-
   <const Out extends ContextArgs>(
     fn: (c: {}) => Context<Out>,
   ): (c: {}) => Context<Out>;
@@ -33,10 +29,6 @@ export interface Impl {
 export const impl: Impl = (fn: any) => fn;
 
 export interface ImplAsync {
-  <const F extends () => {} | Promise<{}>>(fn: F): F;
-
-  <const F extends (c: any) => {} | Promise<{}>>(fn: F): F;
-
   <const Out extends ContextArgs>(
     fn: (c: {}) => Context<Out> | Promise<Context<Out>>,
   ): (c: {}) => Context<Out> | Promise<Context<Out>>;
@@ -54,14 +46,17 @@ export const implAsync: ImplAsync = (fn: any) => fn;
 type _ImplFn = (() => {} | Promise<{}>) | ((c: any) => {} | Promise<{}>);
 type _ImplFns = [_ImplFn, ..._ImplFn[]];
 
+interface Link {
+  <const In extends {}, Impls extends _ImplFns>(
+    c: In,
+    ...impls: Impls
+  ): Context<Impls[number]>
+}
+
 /**
  * Link sync implementations.
  */
-export const link: <const In extends {}, Impls extends _ImplFns>(
-  c: In,
-  ...impls: Impls
-) => In & ReturnType<Impls[number]> = (c, firstImpl, ...impls) => {
-  c = Object.assign(firstImpl(c), c);
+export const link: Link = (c, ...impls) => {
   for (let i = 0; i < impls.length; i++) Object.assign(c, impls[i](c));
   return c as any;
 };
@@ -69,13 +64,10 @@ export const link: <const In extends {}, Impls extends _ImplFns>(
 /**
  * Link async implementations concurrently.
  */
-export const linkAsync: <const In extends {}, Impls extends _ImplFns>(
-  c: In,
-  ...impls: Impls
-) => Promise<In & Awaited<ReturnType<Impls[number]>>> = async (c, ...impls) => {
-  if (impls.length === 1) return Object.assign(await impls[0](c), c);
+export const linkAsync: Link = async (c, ...impls) => {
+  if (impls.length === 1) return Object.assign(c, await impls[0](c));
 
   const arr = new Array<{}>(impls.length);
   for (let i = 0; i < impls.length; i++) arr[i] = impls[i](c);
-  return Object.assign(...((await Promise.all(arr)) as [any, ...any[]]), c);
+  return Object.assign(c, ...await Promise.all(arr));
 };
