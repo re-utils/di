@@ -16,7 +16,7 @@ export interface ImplTag<in out Context> {
 }
 
 export interface Impl {
-  <const F>(fn: F): F & ImplTag<
+  <const F extends (...args: any[]) => any>(fn: F): F & ImplTag<
     F extends (() => infer Out extends {})
       ? Out
       : F extends ((c: infer In extends {}) => infer Out extends {})
@@ -39,7 +39,7 @@ export interface Impl {
 export const impl: Impl = (fn: any) => fn;
 
 export interface ImplAsync {
-  <const F>(fn: F): F & ImplTag<
+  <const F extends (...args: any[]) => any>(fn: F): F & ImplTag<
     F extends (() => infer Out extends {} | Promise<{}>)
       ? Awaited<Out>
       : F extends ((c: infer In extends {}) => infer Out extends {} | Promise<{}>)
