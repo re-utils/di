@@ -1,41 +1,48 @@
-import * as di from 'udic';
+import { impl, link, linkAsync, type Context } from 'udic';
+import { SQL } from 'bun';
 
-type Config = {
+interface Config {
   config: {
-    logLevel: string;
-    connection: string;
+    logLevel: 'DEBUG' | 'WARNING' | 'ERROR';
+    dbUrl: string;
   };
-};
+}
 
-const Logger = di.impl(({ config: { logLevel } }: di.Context<Config>) => ({
-  logger: (msg: string) => {
-    console.log(`[${logLevel}] ${msg}`);
+// Auto infer type
+type Logger = Context<typeof Logger>;
+type Database = Context<typeof Database>;
+
+const Logger = impl((c: Context<Config>) => ({
+  log: (...args: any[]) => {
+    console.log(`[${c.config.logLevel}]`, ...args);
   },
 }));
-type Logger = typeof Logger;
+const Database = impl((c: Context<Config>) => ({
+  sql: new SQL(c.config.dbUrl),
+}));
 
-const Database = di.implAsync(
-  async ({ config: { connection }, logger }: di.Context<Config | Logger>) => ({
-    db: {
-      query: async (sql: string) => {
-        logger('Executing query: ' + sql);
-        return { result: 'Results from ' + connection };
-      },
+// Main
+const main = async (c: Context<Database | Logger>) => {
+  c.log('config:', c.config);
+
+  c.log('start querying');
+  await c.sql`SELECT 1`;
+  c.log('finished querying');
+};
+
+const testLoggerCtx = await linkAsync(
+  {
+    config: {
+      logLevel: 'DEBUG',
+      dbUrl: ':memory',
     },
-  }),
+  },
+  Logger,
+  Database
 );
 
-const c = await di.linkAsync(
-  di.link(
-    {
-      config: {
-        logLevel: 'DEBUG',
-        connection: 'postgres://localhost:1234',
-      },
-    },
-    Logger,
-  ),
+const testCtx = await linkAsync(
+  testLoggerCtx,
   Database,
 );
-
-console.log(await c.db.query('SELECT * FROM users'));
+main(testCtx);

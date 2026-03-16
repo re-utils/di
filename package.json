@@ -1,6 +1,6 @@
 {
   "name": "udic",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "A simple dependency injection library",
   "keywords": [
     "di"
