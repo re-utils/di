@@ -24,13 +24,11 @@ export interface Impl {
   <const F extends (...args: any[]) => any>(
     fn: F,
   ): F &
-    (
-      F extends (() => infer Out extends {})
+    (F extends (() => infer Out extends {})
       ? SyncImplTag<{}, Out>
       : F extends ((c: infer In extends {}) => infer Out extends {})
         ? SyncImplTag<In, Out>
-        : never
-    );
+        : never);
 
   <const Out extends ContextArgs>(
     fn: (c: {}) => Context<Out>,

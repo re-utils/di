@@ -38,11 +38,8 @@ const testLoggerCtx = await linkAsync(
     },
   },
   Logger,
-  Database
-);
-
-const testCtx = await linkAsync(
-  testLoggerCtx,
   Database,
 );
+
+const testCtx = await linkAsync(testLoggerCtx, Database);
 main(testCtx);
