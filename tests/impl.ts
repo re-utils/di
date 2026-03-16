@@ -30,7 +30,7 @@ const main = async (c: Context<Database | Logger>) => {
   c.log('finished querying');
 };
 
-const testLoggerCtx = await linkAsync(
+const testCtx = await linkAsync(
   {
     config: {
       logLevel: 'DEBUG',
@@ -40,6 +40,4 @@ const testLoggerCtx = await linkAsync(
   Logger,
   Database,
 );
-
-const testCtx = await linkAsync(testLoggerCtx, Database);
 main(testCtx);
